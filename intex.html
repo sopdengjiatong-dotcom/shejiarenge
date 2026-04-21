@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>灵魂的边界 · 深度人格与耗能图谱</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* 引入优雅的衬线字体 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body, html { 
+            width: 100%; height: 100%; 
+            background-color: #F9F6F0; /* 象牙白纸张底色 */
+            font-family: 'Noto Serif SC', serif; 
+            color: #33312E; /* 深炭灰 */
+            overflow: hidden; 
+        }
+
+        /* 氛围光晕 */
+        .glow { position: fixed; width: 50vh; height: 50vh; filter: blur(100px); z-index: -1; opacity: 0.4; animation: float 15s infinite alternate; border-radius: 50%; }
+        .glow-1 { background: #E5D5C8; top: -10%; left: -10%; }
+        .glow-2 { background: #D5D6CD; bottom: -10%; right: -10%; animation-delay: -7s; }
+        @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(50px, 50px) scale(1.2); } }
+
+        /* 顶部纤细进度条 */
+        .progress-container { position: fixed; top: 0; left: 0; width: 100%; height: 2px; background: rgba(51, 49, 46, 0.05); z-index: 20; }
+        .progress-bar { height: 100%; background: #B07D6B; width: 0%; transition: width 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
+        .progress-indicator { position: fixed; top: 25px; left: 50%; transform: translateX(-50%); font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-style: italic; color: #8A817C; z-index: 25; letter-spacing: 2px; }
+
+        /* 主容器 */
+        #main-container { max-width: 650px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 80px 24px 20px 24px; overflow-y: auto; }
+        
+        /* 题目卡片 */
+        .question-box {
+            opacity: 0; transform: translateY(20px); transition: all 0.5s ease;
+            background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            padding: 50px 40px; border-radius: 2px; 
+            border: 1px solid rgba(176, 125, 107, 0.15); 
+            box-shadow: 0 15px 35px rgba(51, 49, 46, 0.03);
+            width: 100%; text-align: center; position: relative;
+        }
+        .question-box::before, .question-box::after { content: ''; position: absolute; width: 10px; height: 10px; border: 1px solid #B07D6B; opacity: 0.5; }
+        .question-box::before { top: 15px; left: 15px; border-right: none; border-bottom: none; }
+        .question-box::after { bottom: 15px; right: 15px; border-left: none; border-top: none; }
+
+        .question-box.active { opacity: 1; transform: translateY(0); }
+        .question-box.fade-out { opacity: 0; transform: translateY(-20px); }
+        
+        .part-title { font-size: 0.85rem; letter-spacing: 4px; color: #B07D6B; margin-bottom: 20px; text-transform: uppercase; text-align: center; font-weight: 500; }
+        .question-text { font-size: 1.35rem; line-height: 1.9; margin-bottom: 40px; font-weight: 400; color: #33312E; text-align: justify; text-align-last: center; }
+
+        /* 选项列表 */
+        .options-grid { display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; }
+        .option-item {
+            background: transparent; border: 1px solid #D6D2CB; padding: 20px 30px;
+            cursor: pointer; transition: all 0.4s ease; font-size: 1.05rem; text-align: left;
+            color: #5C5552; line-height: 1.6; position: relative; overflow: hidden;
+        }
+        .option-item::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: rgba(176, 125, 107, 0.05); transition: all 0.4s ease; z-index: -1;
+        }
+        .option-item:hover { border-color: #B07D6B; color: #33312E; transform: translateY(-2px); }
+        .option-item:hover::before { left: 0; }
+        .option-item:active { transform: scale(0.98); }
+
+        .nav-buttons { display: flex; justify-content: center; margin-top: 10px; }
+        .prev-btn {
+            padding: 8px 0; background: transparent; color: #8A817C; border: none; border-bottom: 1px solid #8A817C;
+            font-size: 0.9rem; font-family: 'Noto Serif SC', serif; cursor: pointer; transition: 0.3s; letter-spacing: 2px;
+        }
+        .prev-btn:hover { color: #33312E; border-color: #33312E; }
+        .prev-btn.hidden { display: none; }
+
+        /* 转场与验证层 */
+        .intermission, .verify-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(249, 246, 240, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            z-index: 70; display: none; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.8s ease;
+        }
+        .intermission-text { font-size: 1.4rem; color: #B07D6B; letter-spacing: 4px; border-bottom: 1px solid rgba(176, 125, 107, 0.3); padding-bottom: 10px; text-align: center; line-height: 1.6; }
+        
+        .verify-box {
+            background: #FFFDFC; padding: 60px; border: 1px solid #E5E0D8;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.05); text-align: center; max-width: 400px;
+        }
+        .verify-decor { font-family: 'Cormorant Garamond', serif; font-size: 3rem; color: #B07D6B; line-height: 1; margin-bottom: 10px; font-style: italic; }
+        .verify-title { font-size: 1.4rem; margin-bottom: 5px; color: #33312E; letter-spacing: 6px; }
+        .verify-subtitle { font-size: 0.85rem; color: #A39B98; margin-bottom: 40px; letter-spacing: 2px; font-family: 'Cormorant Garamond', serif; text-transform: uppercase; }
+        .verify-input {
+            width: 180px; font-size: 1.5rem; padding: 10px; border: none; border-bottom: 1px solid #B07D6B;
+            background: transparent; color: #33312E; text-align: center; letter-spacing: 10px; margin-bottom: 40px; outline: none; font-family: 'Cormorant Garamond', serif;
+        }
+        .verify-btn {
+            padding: 14px 40px; background: #33312E; color: #FFFDFC; font-size: 1rem;
+            letter-spacing: 4px; border: 1px solid #33312E; cursor: pointer; transition: 0.4s; font-family: 'Noto Serif SC', serif;
+        }
+        .verify-btn:hover { background: transparent; color: #33312E; }
+
+        /* 报告卡片 - 增加内部滚动 */
+        #report-card {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 85%; max-width: 750px; background: #FFFDFC; color: #33312E;
+            z-index: 110; display: none; 
+            border: 1px solid #EAE5DD; outline: 1px solid #EAE5DD; outline-offset: -8px;
+            box-shadow: 0 30px 60px rgba(51, 49, 46, 0.08); opacity: 0; transition: opacity 1.2s;
+            max-height: 85vh; overflow-y: auto;
+        }
+
+        /* 隐藏或美化滚动条 */
+        #report-card::-webkit-scrollbar { width: 6px; }
+        #report-card::-webkit-scrollbar-track { background: transparent; }
+        #report-card::-webkit-scrollbar-thumb { background: #EAE5DD; border-radius: 10px; }
+        #report-card::-webkit-scrollbar-thumb:hover { background: #D6D2CB; }
+
+        .report-content { padding: 60px 50px 50px; position: relative; }
+        
+        .stamp-decor {
+            position: absolute; top: 40px; right: 40px; width: 60px; height: 60px;
+            border: 1px solid rgba(176, 125, 107, 0.4); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Cormorant Garamond', serif; font-size: 0.7rem; color: rgba(176, 125, 107, 0.6);
+            text-transform: uppercase; text-align: center; line-height: 1.2; transform: rotate(15deg);
+        }
+
+        .report-header { text-align: center; margin-bottom: 30px; border-bottom: 1px solid #F0ECE4; padding-bottom: 30px; }
+        .report-header h1 { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; color: #A39B98; font-style: italic; font-weight: 400; margin-bottom: 20px; letter-spacing: 2px; }
+        .type-title { font-size: 2.2rem; font-weight: 600; color: #33312E; margin: 0 0 10px 0; letter-spacing: 2px; }
+        .type-sub { font-size: 1.2rem; color: #B07D6B; letter-spacing: 6px; }
+        .type-tags { font-size: 0.9rem; color: #A39B98; margin-top: 15px; letter-spacing: 1px; line-height: 1.6; }
+
+        .text-section { margin-bottom: 35px; }
+        .section-heading {
+            text-align: center; font-size: 1.05rem; color: #33312E; margin-bottom: 15px; letter-spacing: 4px;
+            display: flex; align-items: center; justify-content: center; gap: 15px;
+        }
+        .section-heading::before, .section-heading::after { content: ''; width: 30px; height: 1px; background: #D6D2CB; }
+        .analysis-p { font-size: 1rem; line-height: 2; color: #5C5552; text-align: justify; margin: 0; }
+        
+        .prescription-box { background: rgba(249, 246, 240, 0.5); border: 1px solid #EAE5DD; padding: 30px; margin-top: 10px; }
+        .prescription-content { font-size: 0.95rem; line-height: 2; color: #5C5552; }
+        .prescription-content b { color: #B07D6B; font-weight: 600; }
+        
+        .footer-info { margin-top: 40px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .date-stamp { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-style: italic; color: #A39B98; }
+        
+        .action-buttons { display: flex; gap: 15px; }
+        .btn { padding: 10px 20px; font-size: 0.95rem; font-family: 'Noto Serif SC', serif; cursor: pointer; transition: 0.3s; letter-spacing: 2px; background: transparent; }
+        .btn-secondary { border: 1px solid #D6D2CB; color: #5C5552; }
+        .btn-secondary:hover { border-color: #33312E; color: #33312E; }
+        .btn-primary { border: 1px solid #B07D6B; background: #B07D6B; color: #FFF; }
+        .btn-primary:hover { background: transparent; color: #B07D6B; }
+
+        @media (max-width: 700px) {
+            #main-container { padding: 70px 16px 20px; }
+            .question-box { padding: 40px 25px; }
+            .question-text { font-size: 1.2rem; margin-bottom: 30px; }
+            .option-item { padding: 16px 20px; font-size: 0.95rem; }
+            .verify-box { padding: 50px 30px; width: 90%; }
+            #report-card { width: 92%; max-height: 90vh; outline: none; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+            .report-content { padding: 40px 25px; }
+            .stamp-decor { top: 20px; right: 20px; width: 50px; height: 50px; font-size: 0.6rem; }
+            .type-title { font-size: 1.8rem; }
+            .type-sub { font-size: 1rem; }
+            .footer-info { flex-direction: column; gap: 25px; align-items: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+
+    <div class="progress-container"><div class="progress-bar" id="progress-bar"></div></div>
+    <div class="progress-indicator" id="progress-text">1 / 42</div>
+
+    <div id="main-container"></div>
+
+    <div class="intermission" id="intermission"><div class="intermission-text" id="intermission-text"></div></div>
+
+    <div class="verify-layer" id="verify-layer">
+        <div class="verify-box">
+            <div class="verify-decor">❦</div>
+            <p class="verify-title">开启信笺</p>
+            <p class="verify-subtitle">Unlock the soul trajectory</p>
+            <input type="text" class="verify-input" id="verify-code" autocomplete="off" maxlength="5">
+            <button class="verify-btn" id="verify-submit">查看画像</button>
+        </div>
+    </div>
+
+    <div id="report-card">
+        <div class="report-content" id="reportContent"></div>
+    </div>
+
+    <script>
+        (function() {
+            // 题库：前 36 题测讨好维度，后 6 题测耗能维度 (已去除题号和字母前缀，适合打乱)
+            const questions = [
+                // ------ 第一到第六篇章 (维度1：性格倾向) ------
+                { part: "第一篇章：防御机制与冲突应对", text: "临近下班，你自己的项目还没做完，一位平时经常把麻烦推给别人的同事又跑来向你求助，声称自己“快崩溃了”。你会：", options: [
+                    { t: "压抑自己的焦虑，立刻接手他的工作，哪怕自己今晚要熬夜到凌晨。", type: "A" },
+                    { t: "内心充满怨气，但嘴上还是答应了，一边做一边在心里狠狠责怪自己为什么不拒绝。", type: "B" },
+                    { t: "温和但坚定地表明自己也有死线要赶，建议他去找主管协调资源。", type: "C" },
+                    { t: "冷嘲热讽地指出他平时的工作态度问题，让他自己承担后果。", type: "D" }
+                ] },
+                { text: "在一次朋友聚餐中，有人当众拿你的身材或痛点开了一个极不恰当的玩笑。你的“自我（Ego）”会如何调节？", options: [
+                    { t: "跟着大家一起大笑，甚至自黑得更厉害，生怕气氛冷场。", type: "A" },
+                    { t: "强颜欢笑，但脸涨得通红，回家后在被窝里反刍这件事并暗自流泪。", type: "B" },
+                    { t: "收起笑容，严肃地看着对方说：“这个玩笑并不好笑，我感觉被冒犯了。”", type: "C" },
+                    { t: "直接一杯水泼在对方脸上，或者用更恶毒的话当场反击。", type: "D" }
+                ] },
+                { text: "你花了一个月心血熬出来的企划案，被上司用极其刻薄的语言贬低得一文不值。你会：", options: [
+                    { t: "认为全都是自己的错，陷入极度的自我厌恶，并承诺今晚通宵重写。", type: "A" },
+                    { t: "感到极度委屈，但在上司面前拼命点头称是，转头向同事大吐苦水。", type: "B" },
+                    { t: "虚心接受有建设性的意见，但对人身攻击的部分保持内心的界限，不让它击碎自尊。", type: "C" },
+                    { t: "当场拍桌子辞职，认为这种不懂欣赏的庸人根本不配拥有你的才华。", type: "D" }
+                ] },
+                { text: "室友或伴侣不小心打碎了你攒钱买来的、意义非凡的限量版杯子。为了避免冲突，你会：", options: [
+                    { t: "赶紧把碎片扫掉，笑着说“没关系，我正好想换个新的”，反而去安慰对方。", type: "A" },
+                    { t: "心里很痛，但强忍着不说，之后好几天都对对方冷暴力。", type: "B" },
+                    { t: "坦诚地表达你的难过：“我很看重这个杯子，它碎了让我很伤心。”", type: "C" },
+                    { t: "大发雷霆，要求对方立刻赔偿一个一模一样的，否则这事没完。", type: "D" }
+                ] },
+                { text: "面对父母打着“为你好”旗号的过度干涉（比如催婚、逼迫考公），你的防御机制通常是：", options: [
+                    { t: "彻底放弃抵抗，顺从他们的安排，把真实的自己扼杀在摇篮里。", type: "A" },
+                    { t: "表面敷衍答应，背地里却通过拖延、生病等隐蔽的方式来表达抗拒。", type: "B" },
+                    { t: "坐下来与他们进行艰难但真诚的对话，明确划定理性与爱的边界。", type: "C" },
+                    { t: "彻底切断联系，用最决绝的方式斩断所有的亲情羁绊。", type: "D" }
+                ] },
+                { text: "当你对某个人产生了强烈的愤怒，但又害怕表达出来会破坏关系时，你最常使用的“反向形成”是：", options: [
+                    { t: "表现得对他比平时更加热情和殷勤，试图用讨好来掩盖愤怒。", type: "A" },
+                    { t: "在朋友圈发一些仅他可见的伤感或隐晦的句子，希望他能自己领悟。", type: "B" },
+                    { t: "找一个合适的时机，用“我感到…”的句式，平静地向他表达我的不满。", type: "C" },
+                    { t: "把愤怒转移到其他无关的人或事物上（比如踢路边的垃圾桶或骂服务员）。", type: "D" }
+                ] },
+                { part: "第二篇章：依恋理论（亲密关系与被弃恐惧）", text: "你给正在暧昧的对象发了一条长长的心里话，但整整四个小时过去，对话框依然死寂。你的反应是：", options: [
+                    { t: "陷入极度恐慌，连续发十几条消息道歉：“我是不是说错话了？你别生气。”", type: "A" },
+                    { t: "疯狂刷新朋友圈看他有没有动态，脑海中上演了一百种他讨厌你的剧本。", type: "B" },
+                    { t: "觉得他可能在忙或者在思考如何回复，放下手机先去处理自己的事情。", type: "C" },
+                    { t: "觉得这种不及时回复的人根本不值得交往，直接拉黑删除。", type: "D" }
+                ] },
+                { text: "你的伴侣最近工作非常忙碌，连续两周没有陪你度过周末。你会：", options: [
+                    { t: "每天为他做好精美的便当送到公司，试图用极度的体贴换取他哪怕一秒的关注。", type: "A" },
+                    { t: "变得非常粘人和敏感，经常旁敲侧击地问他“你是不是不爱我了”。", type: "B" },
+                    { t: "理解他的处境，趁这个时间安排自己一直想去看的画展或和朋友聚会。", type: "C" },
+                    { t: "认为自己被冷落了，于是故意去找前任或异性朋友出去玩以报复他。", type: "D" }
+                ] },
+                { text: "在一个完全陌生的社交派对上，带你来的朋友突然被其他人叫走，留下你一个人。你会：", options: [
+                    { t: "像个无头苍蝇一样端着酒杯去迎合别人的话题，哪怕自己根本不感兴趣。", type: "A" },
+                    { t: "局促不安地躲在角落里玩手机，觉得自己是个不受欢迎的透明人。", type: "B" },
+                    { t: "泰然自若地品尝美食，观察人群，如果觉得无聊就礼貌地提前离开。", type: "C" },
+                    { t: "觉得这个派对烂透了，朋友也极其不靠谱，一声不吭地直接走人。", type: "D" }
+                ] },
+                { text: "当你在生活中遭遇了重大挫折（如失业、大病），你需要向亲密的人求助时，你的真实心态是：", options: [
+                    { t: "“我不能告诉他们，我必须永远扮演那个有用的人，否则他们会离开我。”", type: "A" },
+                    { t: "“如果我展示了我的软弱，他们一定会觉得我变成了累赘。”", type: "B" },
+                    { t: "“我愿意向他们敞开伤口，因为我相信我们能共同承受生命的重量。”", type: "C" },
+                    { t: "“我不需要任何人的同情，我自己能解决，别人只会看我的笑话。”", type: "D" }
+                ] },
+                { text: "如果有人试图靠近你，想要了解你内心深处的创伤和过去，你会：", options: [
+                    { t: "毫无保留地全盘托出，甚至过度暴露，试图用卖惨来换取对方的同情和爱。", type: "A" },
+                    { t: "既渴望被理解又害怕被评判，说一半留一半，时刻观察对方的表情。", type: "B" },
+                    { t: "评估对方的可靠程度，在感到安全的前提下，缓慢而真诚地分享。", type: "C" },
+                    { t: "竖起满身尖刺，冷硬地告诉对方：“我的事与你无关，别来探听我的隐私。”", type: "D" }
+                ] },
+                { text: "当一段曾经形影不离的友谊，因为彼此的生活轨迹不同而自然渐行渐远时，你会：", options: [
+                    { t: "拼命去迎合对方现在的圈子和喜好，试图用卑微的讨好来强行挽留。", type: "A" },
+                    { t: "陷入深深的自责，觉得一定是因为自己不够好，才会被朋友“抛弃”。", type: "B" },
+                    { t: "接受这遗憾的现实，将美好的回忆珍藏，并在节假日送上真诚的祝福。", type: "C" },
+                    { t: "觉得对方是个忘恩负义的势利眼，把对方所有的联系方式都拉黑。", type: "D" }
+                ] },
+                { part: "第三篇章：认知行为流派（核心信念与认知扭曲）", text: "你在跨部门会议上发言时，坐在对面的总监突然皱了一下眉头。你的第一念头是：", options: [
+                    { t: "“他觉得我的方案蠢透了，我的职业生涯要完蛋了，我就是个废物。”", type: "A" },
+                    { t: "“我是不是刚才说错数据了？我的声音是不是在发抖让他觉得我很不专业？”", type: "B" },
+                    { t: "“他可能是对某个具体的细节有疑问，或者只是昨晚没睡好。”", type: "C" },
+                    { t: "“这老头懂什么？他根本理解不了我方案的超前性。”", type: "D" }
+                ] },
+                { text: "为了策划一场朋友聚会，你忙前忙后。结果聚会当天，预定的餐厅由于停电无法营业。你会觉得：", options: [
+                    { t: "“我搞砸了一切，大家一定在心里恨死我了，我以后再也不配组局了。”", type: "A" },
+                    { t: "“天哪，我为什么没有提前准备Plan B，我真是个成事不足败事有余的人。”", type: "B" },
+                    { t: "“这真是个意外，不过没关系，大家在一起最重要，我们换去旁边吃火锅吧。”", type: "C" },
+                    { t: "“这破餐厅真晦气，朋友们要是敢抱怨一句，以后我就再也不管这闲事了。”", type: "D" }
+                ] },
+                { text: "朋友随口评价了一句：“你最近好像胖了一点/憔悴了一点。”你的“读心术”机制会如何翻译这句话？", options: [
+                    { t: "“他觉得我丑爆了，他嫌弃我了，我必须立刻开始极端的节食/整容。”", type: "A" },
+                    { t: "“他一定是在暗示我最近状态太差了，我得表现得多一点活力来掩盖。”", type: "B" },
+                    { t: "“他只是陈述了一个视觉感受，确实最近加班太多/没怎么运动。”", type: "C" },
+                    { t: "“他自己长得那个样子好意思说我？真是狗嘴里吐不出象牙。”", type: "D" }
+                ] },
+                { text: "当别人向向你提出一个严重超出你能力或职责范围的要求（比如让你替他背黑锅）时，你会：", options: [
+                    { t: "觉得如果拒绝就会被整个圈子排挤，于是含泪答应，自己承担所有后果。", type: "A" },
+                    { t: "不敢直接拒绝，找各种蹩脚的借口试图拖延，最后还是被逼着做了。", type: "B" },
+                    { t: "毫不犹豫地明确拒绝，告诉对方这违反了你的原则和底线。", type: "C" },
+                    { t: "录音保留证据，然后反手把他举报到上级那里，让他身败名裂。", type: "D" }
+                ] },
+                { text: "在你的核心信念中，“被拒绝”这个事件等同于什么？", options: [
+                    { t: "我这个人的存在就是没有价值的，我是一滩烂泥。", type: "A" },
+                    { t: "一张证明我不够好的成绩单，让我感到强烈的羞耻和挫败。", type: "B" },
+                    { t: "一次需求的不匹配，说明在这件事上我们没有达成共识。", type: "C" },
+                    { t: "对方没有眼光，错失了一个天大的好机会。", type: "D" }
+                ] },
+                { text: "面对他人偶尔的冷落或没有及时回馈，你的“灾难化思维”会描绘出怎样的图景？", options: [
+                    { t: "“他一定是在和别人说我的坏话，所有人都联合起来孤立我了。”", type: "A" },
+                    { t: "“我们的关系肯定出现了无法弥补的裂痕，我即将失去他。”", type: "B" },
+                    { t: "“每个人都有自己的生活节奏，这不代表针对我。”", type: "C" },
+                    { t: "“他这是在向我宣战，那我以后绝不会再给他好脸色看。”", type: "D" }
+                ] },
+                { part: "第四篇章：人本主义流派（自我价值与真实自我）", text: "为了在长辈或亲戚眼中保持一个“乖巧懂事”的人设，你愿意付出多大的代价？", options: [
+                    { t: "放弃自己喜欢的伴侣、职业和爱好，完全按照他们的剧本来度过一生。", type: "A" },
+                    { t: "表面上维持乖巧，内心痛苦不堪，经常在夜里有一种被抽空灵魂的感觉。", type: "B" },
+                    { t: "保持基本的礼貌与尊重，但在涉及人生重大决定时，坚持自己的选择。", type: "C" },
+                    { t: "在家庭聚会上故意穿得奇装异服，发表离经叛道的言论，以此来气他们。", type: "D" }
+                ] },
+                { text: "当你对某个社会热点事件有自己独特的看法，但发现周围同事的主流意见完全相反时，你会：", options: [
+                    { t: "立刻改变自己的观点，附和他们，甚至表现得比他们还要激进。", type: "A" },
+                    { t: "保持沉默，假装没听见，害怕自己一旦开口就会被群体排斥。", type: "B" },
+                    { t: "平和地表达自己的观点，认为和而不同才是人际交往的常态。", type: "C" },
+                    { t: "认为他们都是被洗脑的蠢货，用极具攻击性的语言与他们辩论。", type: "D" }
+                ] },
+                { text: "人本主义者卡尔·罗杰斯问你：你的“自我价值感”通常来源于哪里？", options: [
+                    { t: "来源于领导的表扬、朋友圈的点赞和伴侣的夸奖——如果没有这些，我就一无是处。", type: "A" },
+                    { t: "很大程度上受外界评价影响——别人夸我我就开心一整天，骂我我就崩溃。", type: "B" },
+                    { t: "来源于内心的充实和我对自己的认可——外界的评价只是参考，不是定义。", type: "C" },
+                    { t: "来源于我能掌控多少人，或者我能在争论中驳倒多少人。", type: "D" }
+                ] },
+                { text: "如果你原本热爱写晦涩但深刻的独立文学，但发现写口水爽文能获得更多流量和金钱，你会：", options: [
+                    { t: "彻底放弃初衷，每天批量生产自己都觉得恶心的文字，只为讨好读者。", type: "A" },
+                    { t: "为了生存写爽文，但内心充满对自己的鄙视，觉得出卖了灵魂。", type: "B" },
+                    { t: "找一份能养活自己的正职，把独立文学作为纯粹的自我实现，不妥协于市场。", type: "C" },
+                    { t: "痛骂这个时代审美的堕落，认为读者都不配看自己的作品。", type: "D" }
+                ] },
+                { text: "在你看来，“讨好他人”在你的生命历程中扮演着什么角色？", options: [
+                    { t: "是我赖以生存的氧气面罩，没有它我就会在人际交往中窒息而死。", type: "A" },
+                    { t: "是一件穿久了脱不下来的紧身衣，勒得我喘不过气，但脱下来又怕冷。", type: "B" },
+                    { t: "是我曾经不成熟时的生存策略，现在我已经学会了用真实的自我去连接世界。", type: "C" },
+                    { t: "是弱者才玩的游戏，我的人生信条是让别人来讨好我。", type: "D" }
+                ] },
+                { text: "当你感到深深的疲惫或抑郁，却又不得不去参加一个推脱不掉的社交应酬时，你会：", options: [
+                    { t: "逼迫自己喝下几杯酒，变成全场最活跃的开心果，把悲伤深深压抑。", type: "A" },
+                    { t: "戴上礼貌的假面具，强撑着应付所有人，回家后感觉整个人像被榨干了一样。", type: "B" },
+                    { t: "适度参与，不勉强自己活跃气氛，在感到难以承受时提前找借口离开。", type: "C" },
+                    { t: "全程黑脸，对任何来搭话的人都冷言冷语，把负能量传染给全场。", type: "D" }
+                ] },
+                { part: "第五篇章：社会交换理论（成本与收益的失衡）", text: "在一段关系中，你总是那个主动买单、主动策划约会、主动提供情绪价值的人。对方心安理得地接受，却鲜少回报。你会：", options: [
+                    { t: "继续加倍付出，深信只要自己做得足够多、足够好，对方总有一天会被感动。", type: "A" },
+                    { t: "感到非常委屈和不平衡，但又不敢停止付出，害怕一旦停止关系就会结束。", type: "B" },
+                    { t: "停止单方面的付出，与对方坦诚沟通你的感受；如果对方依然如故，便及时止损。", type: "C" },
+                    { t: "突然翻脸，把过去所有的花费和付出列一张账单拍在对方面前，要求他偿还。", type: "D" }
+                ] },
+                { text: "你的一个熟人，平时从来不联系你，只有在需要借钱或者帮忙投票、砍一刀时才会发消息给你。你会：", options: [
+                    { t: "害怕被说小气，不仅立刻帮忙，还主动嘘寒问暖，问对方还有什么需要。", type: "A" },
+                    { t: "心里很反感这种“工具人”的待遇，但碍于面子还是勉强帮了。", type: "B" },
+                    { t: "委婉但明确地拒绝，或者干脆当作没看见，不让这种低质量关系消耗自己。", type: "C" },
+                    { t: "截图发到朋友圈公开嘲讽，让所有人都看看他的嘴脸。", type: "D" }
+                ] },
+                { text: "当你处于“连轴转”的加班状态，已经极其疲惫，此时一个关系一般的朋友想找你倾诉他失恋的痛苦，你会：", options: [
+                    { t: "强打精神，陪他打电话聊到凌晨三点，第二天自己顶着黑眼圈去挨老板的骂。", type: "A" },
+                    { t: "一边打瞌睡一边听，心里烦躁得不行，但嘴上还在不断发出“嗯嗯”的安慰声。", type: "B" },
+                    { t: "坦白告诉他：“我今晚真的太累了快晕倒了，明天下班后我请你喝杯酒好好聊聊。”", type: "C" },
+                    { t: "不耐烦地打断他：“你失恋算什么？我都快猝死了，别拿你的破事烦我。”", type: "D" }
+                ] },
+                { text: "如果“拒绝别人”会让你产生100分的内疚感，而“委屈自己答应”只会产生50分的憋屈感，你通常会选择：", options: [
+                    { t: "永远选择委屈自己，我的心理账户里早就装满了憋屈，再多一点也无所谓。", type: "A" },
+                    { t: "每次都想选拒绝，但在最后关头总是向内疚感妥协，事后又后悔不已。", type: "B" },
+                    { t: "理性评估这件事的底线，如果是原则问题，我宁愿承受100分的内疚也会拒绝。", type: "C" },
+                    { t: "我拒绝别人不仅不会内疚，还会产生100分的快感。", type: "D" }
+                ] },
+                { text: "你和同事一起点外卖，大家都想吃辣的，但你最近胃溃疡绝对不能吃辣。当大家询问你的意见时，你会：", options: [
+                    { t: "说“我也超爱吃辣”，然后强忍着胃痛吃下去，半夜偷偷去医院挂急诊。", type: "A" },
+                    { t: "犹豫半天说“我都行，听你们的”，然后在饭桌上只吃白米饭，心里暗自委屈。", type: "B" },
+                    { t: "坦陈自己的身体状况：“我胃溃疡不能吃辣，要不我们点两家不同的，或者换一家清淡的？”", type: "C" },
+                    { t: "强硬地说：“我胃不好，今天所有人必须陪我吃白粥，谁不乐意谁自己出去吃。”", type: "D" }
+                ] },
+                { text: "在人际交往的隐形账本上，你最害怕看到哪种记录？", options: [
+                    { t: "“我今天好像麻烦了别人”（这会让你焦虑不安，想立刻用十倍去补偿）。", type: "A" },
+                    { t: "“我付出了真心，但对方似乎并不在乎”（这会让你陷入长期的内耗）。", type: "B" },
+                    { t: "“这是一段长期处于消耗和失衡状态的关系”（这会让你理性地考虑退出）。", type: "C" },
+                    { t: "“那个人居然敢占我的便宜”（这会让你立刻开启战斗模式）。", type: "D" }
+                ] },
+                { part: "第六篇章：存在主义心理学（本真性与自我异化）", text: "存在主义认为人必须为自己的选择承担责任。当你面临“留在大城市内卷”还是“回老家过安稳日子”的选择时，你的决策依据主要是：", options: [
+                    { t: "父母的面子、亲戚的看法、朋友的期待——什么能让他们满意，我就选什么。", type: "A" },
+                    { t: "在世俗标准和内心渴望之间极度撕裂，最后往往半推半就地选了大多数人选的那条路。", type: "B" },
+                    { t: "倾听自己内心真实的声音，权衡利弊后做出选择，并愿意为这个选择带来的苦与乐买单。", type: "C" },
+                    { t: "闭着眼睛瞎选，认为人生本来就是毫无意义的荒诞剧，选什么都一样烂。", type: "D" }
+                ] },
+                { text: "你在职场上扮演了一个多年的“老好人”角色。随着时间的推移，你发现：", options: [
+                    { t: "我已经忘记了生气的滋味，即使被严重侵犯权益，我也只会机械地赔笑脸。", type: "A" },
+                    { t: "我每天都在“不想干了”和“不敢辞职”的抑郁中挣扎，感觉真实的自己正在死去。", type: "B" },
+                    { t: "我开始有意识地撕下这个标签，学会在需要的时候展示锋芒，哪怕这会引起短暂的阵痛。", type: "C" },
+                    { t: "我利用这种伪装降低了别人的防备，最终目的是为了把他们都踩在脚下。", type: "D" }
+                ] },
+                { text: "面对自由带来的巨大焦虑（因为自由意味着你要对自己全权负责），你常常试图通过什么方式逃避？", options: [
+                    { t: "把自己变成公司、家庭或伴侣的附庸，让他们来替我做决定，我只负责执行。", type: "A" },
+                    { t: "随波逐流，别人结婚我结婚，别人买房我买房，用世俗的枷锁来逃避思考的痛苦。", type: "B" },
+                    { t: "直面这种焦虑，勇敢地创造属于自己的人生意义，哪怕这条路充满未知。", type: "C" },
+                    { t: "用酒精、游戏或极度的犬儒主义来麻痹自己，拒绝参与任何真实的构建。", type: "D" }
+                ] },
+                { text: "当你意识到，你所爱的人，爱的其实是你为了迎合他而精心伪装出来的“完美伴侣”时：", options: [
+                    { t: "我会更加谨小慎微地维持这个完美的幻影，宁愿一辈子不卸妆，也不愿失去他。", type: "A" },
+                    { t: "感到深深的悲哀和孤独，哪怕睡在一张床上，也觉得隔着最远的距离。", type: "B" },
+                    { t: "决定慢慢向他展现真实的、不完美的自己，如果他因此离开，那就让他离开。", type: "C" },
+                    { t: "觉得他是个只能接受虚假的蠢货，于是我变本加厉地欺骗他，直到榨干他的价值。", type: "D" }
+                ] },
+                { text: "假设此时此刻就是生命的尽头，如果你发现自己这一生都是在为了满足别人的期待而活，你的感受是：", options: [
+                    { t: "觉得这是一种伟大，我用我的一生燃烧了自己，照亮了别人，我没有遗憾。", type: "A" },
+                    { t: "充满无尽的悔恨和愤怒，痛哭流涕地质问上天为什么不给我重来一次的机会。", type: "B" },
+                    { t: "庆幸自己早已觉醒，虽然也曾妥协，但我终究夺回了人生的方向盘。", type: "C" },
+                    { t: "冷笑一声，觉得不管是为谁活，这世界早点毁灭最好。", type: "D" }
+                ] },
+                { text: "明天早晨，当你再次走进那个充满人际博弈的办公室，或者面对那个总是索取的亲友时，你决定：", options: [
+                    { t: "继续扬起卑微的笑脸，把“好的”、“没问题”、“对不起”挂在嘴边。", type: "A" },
+                    { t: "在心里默默发誓今天一定要拒绝一次，但当对方一开口，我又一次溃败了。", type: "B" },
+                    { t: "深吸一口气，用温和而坚定的声音，说出生命中最重要的那个词：“不”。", type: "C" },
+                    { t: "带着满腔怒火去上班，准备把所有惹我的人都痛骂一顿。", type: "D" }
+                ] },
+                
+                // ------ 第七篇章 (维度2：社交耗能指数) ------
+                { part: "第七篇章：灵魂的电池<br>能量心理学与高敏感特质", text: "在一场长达三小时的、充满寒暄与社交辞令的行业聚会后，你终于回到了自己安静的房间。关上门的那一刻，你的感受是：", options: [
+                    { t: "灵魂仿佛被抽干，感觉自己像一个漏水的破罐子，需要三天完全不说话才能恢复出厂设置。", type: "A" },
+                    { t: "长舒一口气，感觉“电量”只剩10%，连洗漱的力气都没有，只想立刻瘫倒在床上。", type: "B" },
+                    { t: "有些疲惫，但洗个热水澡、听几首轻音乐后，感觉自己又能恢复平静。", type: "C" },
+                    { t: "意犹未尽，甚至还想打电话给朋友继续讨论刚才聚会上的趣事。", type: "D" }
+                ] },
+                { text: "工作中，你需要长时间维持一个“专业、友善、情绪稳定”的完美职场人设。对你来说，这种“情绪劳动”就像：", options: [
+                    { t: "在深海里憋气潜水。每一秒都在消耗生命值，如果不赶紧浮出水面（独处），就会窒息而亡。", type: "A" },
+                    { t: "穿着一件极其沉重且不透气的华丽铠甲。虽然能保护自己，但勒得浑身酸痛。", type: "B" },
+                    { t: "穿上一套合身的职业装。虽然不如睡衣舒服，但下班脱掉就好了。", type: "C" },
+                    { t: "穿上了拥有魔法的披风。这种扮演让我感到如鱼得水，甚至能激发我的潜能。", type: "D" }
+                ] },
+                { text: "你的手机突然在一个小时内弹出了50条充满热闹闲聊的群消息，或者几个朋友同时找你吐槽。你的第一反应是：", options: [
+                    { t: "强烈的生理性恐慌和烦躁。立刻开启免打扰，甚至想把手机直接扔出窗外。", type: "A" },
+                    { t: "感到一阵沉重的压迫感。叹着气一条条看，为了显得合群，勉强挤出几个表情包回复。", type: "B" },
+                    { t: "随缘点开。有精力就参与几句，没精力就放着不看，不觉得有什么心理负担。", type: "C" },
+                    { t: "兴奋地加入群聊，信息密度越大，你敲击键盘的速度越快，感觉自己活过来了。", type: "D" }
+                ] },
+                { text: "一个原本约定好的周末聚餐，对方因为突发大雨而在最后一刻发信息取消了。看着窗外的雨，你的真实反应是：", options: [
+                    { t: "狂喜！犹如一个即将走上刑场的囚犯突然获得了无罪赦免，立刻换上睡衣开始享受孤独。", type: "A" },
+                    { t: "虽然嘴上说着“好可惜”，但心里暗暗松了一口气，觉得不用出门化妆/应酬真是太好了。", type: "B" },
+                    { t: "有点遗憾，毕竟期待了挺久，但也能迅速调整心态，给自己安排一部电影看。", type: "C" },
+                    { t: "极其失落和烦躁，受不了突然空下来的时间，立刻开始在通讯录里翻找其他能约出来的人。", type: "D" }
+                ] },
+                { text: "存在于一个“开放式办公区”或“没有个人隐私边界的合租房”里，随时可能被人搭话或打断，这种环境对你而言：", options: [
+                    { t: "是一场无休止的凌迟。我的精神能量像被无数根水管同时吸走，根本无法集中注意力。", type: "A" },
+                    { t: "是一场防御战。我必须整天戴着降噪耳机，用冷漠的表情作为盾牌，才能勉强存活。", type: "B" },
+                    { t: "偶尔会觉得被打扰，但如果真的需要专注，我会明确开口告诉别人“我现在需要安静”。", type: "C" },
+                    { t: "非常完美。我喜欢这种充满人气的白噪音，绝对的安静反而会让我感到窒息和焦虑。", type: "D" }
+                ] },
+                { text: "夜深人静，当你结束了一整天高密度的社交活动躺在床上准备入睡时，你的大脑通常在播放什么？", options: [
+                    { t: "“社死名场面回放”。反复咀嚼自己今天说错的一句话、一个不自然的表情，内耗到天明。", type: "A" },
+                    { t: "“情绪复盘”。不断揣测别人今天某句话背后的深意，担心自己是不是无意中得罪了谁。", type: "B" },
+                    { t: "“清空回收站”。简单回顾一下今天的行程，然后让思绪自然飘散，进入梦乡。", type: "C" },
+                    { t: "“明日预告”。兴奋地规划着明天要去见谁、要做什么，对新的一天充满期待。", type: "D" }
+                ] }
+            ];
+
+            // 核心打乱算法：洗牌
+            function shuffleArray(arr) {
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+            // 每次页面加载时，遍历所有题目，打乱其内部 options 的顺序
+            questions.forEach(q => shuffleArray(q.options));
+
+            // 数据记录
+            const validCodes = new Set(['98937','90519','53078','51049','80053','83257','31496','36007','85696','64469','69210','50503','94110','42991','88079','81029','18323','90249','12664','41856']);
+            let currentIdx = 0;
+            // 双维计分
+            let scores1 = { A:0, B:0, C:0, D:0 }; // 前 36 题（人格）
+            let scores2 = { A:0, B:0, C:0, D:0 }; // 后 6 题（能耗）
+            let answerHistory = new Array(questions.length).fill(null);
+
+            // DOM
+            const mainContainer = document.getElementById('main-container');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const intermissionDiv = document.getElementById('intermission');
+            const intermissionText = document.getElementById('intermission-text');
+            const verifyLayer = document.getElementById('verify-layer');
+            const verifyInput = document.getElementById('verify-code');
+            const verifyBtn = document.getElementById('verify-submit');
+            const reportCard = document.getElementById('report-card');
+            const reportContent = document.getElementById('reportContent');
+
+            function renderQuestion() {
+                const q = questions[currentIdx];
+                const box = document.createElement('div'); 
+                box.className = 'question-box'; 
+                
+                const partHtml = q.part ? `<div class="part-title">${q.part}</div>` : '';
+                box.innerHTML = `
+                    ${partHtml}
+                    <div class="question-text">${q.text}</div>
+                    <div class="options-grid" id="options-grid"></div>
+                    <div class="nav-buttons">
+                        <button class="prev-btn ${currentIdx === 0 ? 'hidden' : ''}" id="prevQuestionBtn">回溯选择</button>
+                    </div>
+                `;
+                mainContainer.innerHTML = '';
+                mainContainer.appendChild(box);
+                
+                const optsDiv = document.getElementById('options-grid');
+                q.options.forEach((opt) => {
+                    const optDiv = document.createElement('div');
+                    optDiv.className = 'option-item';
+                    optDiv.innerText = opt.t;
+                    // 点击时，传递该选项真实的 type 值，不受乱序影响
+                    optDiv.onclick = () => handleAnswer(opt.type);
+                    optsDiv.appendChild(optDiv);
+                });
+
+                const prevBtn = document.getElementById('prevQuestionBtn');
+                if (prevBtn) prevBtn.addEventListener('click', goToPrevQuestion);
+
+                updateProgress();
+                setTimeout(() => box.classList.add('active'), 20);
+            }
+
+            function updateProgress() {
+                progressBar.style.width = ((currentIdx + 1) / questions.length * 100) + '%';
+                progressText.innerText = `${currentIdx + 1} / ${questions.length}`;
+            }
+
+            function handleAnswer(type) {
+                // 撤回旧答案
+                if (answerHistory[currentIdx] !== null) {
+                    if (currentIdx < 36) scores1[answerHistory[currentIdx]] -= 1;
+                    else scores2[answerHistory[currentIdx]] -= 1;
+                }
+                
+                // 记录新答案
+                answerHistory[currentIdx] = type;
+                if (currentIdx < 36) scores1[type] += 1;
+                else scores2[type] += 1;
+
+                const currentBox = document.querySelector('.question-box');
+                if (currentBox) {
+                    currentBox.classList.remove('active');
+                    currentBox.classList.add('fade-out'); 
+                }
+
+                setTimeout(() => {
+                    if (currentIdx < questions.length - 1) {
+                        const oldPart = questions[currentIdx].part; 
+                        currentIdx++; 
+                        const nextQ = questions[currentIdx];
+                        
+                        if (nextQ.part && nextQ.part !== oldPart) {
+                            showIntermission(nextQ.part);
+                        } else {
+                            renderQuestion();
+                        }
+                    } else {
+                        verifyLayer.style.display = 'flex';
+                        setTimeout(() => verifyLayer.style.opacity = '1', 30);
+                    }
+                }, 500);
+            }
+
+            function goToPrevQuestion() {
+                if (currentIdx > 0) {
+                    if (answerHistory[currentIdx] !== null) {
+                        if (currentIdx < 36) scores1[answerHistory[currentIdx]] -= 1;
+                        else scores2[answerHistory[currentIdx]] -= 1;
+                        answerHistory[currentIdx] = null;
+                    }
+                    const currentBox = document.querySelector('.question-box');
+                    if (currentBox) {
+                        currentBox.classList.remove('active');
+                        currentBox.style.transform = 'translateY(20px)';
+                    }
+                    setTimeout(() => {
+                        currentIdx--;
+                        renderQuestion();
+                    }, 400);
+                }
+            }
+
+            function showIntermission(text) {
+                intermissionText.innerHTML = text;
+                intermissionDiv.style.display = 'flex';
+                setTimeout(() => intermissionDiv.style.opacity = '1', 20);
+                setTimeout(() => {
+                    intermissionDiv.style.opacity = '0';
+                    setTimeout(() => {
+                        intermissionDiv.style.display = 'none';
+                        renderQuestion();
+                    }, 800);
+                }, 1800);
+            }
+
+            verifyBtn.addEventListener('click', function() {
+                const code = verifyInput.value.trim();
+                if (validCodes.has(code)) {
+                    verifyLayer.style.opacity = '0';
+                    setTimeout(() => {
+                        verifyLayer.style.display = 'none';
+                        mainContainer.style.display = 'none';
+                        reportCard.style.display = 'block';
+                        showReport();
+                        setTimeout(() => reportCard.style.opacity = '1', 100);
+                    }, 500);
+                } else {
+                    alert('密钥似乎不对，请再次确认。');
+                }
+            });
+
+            // 16型人格数据矩阵
+            function buildReport() {
+                let mainType1 = 'A';
+                let max1 = scores1.A;
+                if (scores1.B > max1) { max1 = scores1.B; mainType1 = 'B'; }
+                if (scores1.C > max1) { max1 = scores1.C; mainType1 = 'C'; }
+                if (scores1.D > max1) { max1 = scores1.D; mainType1 = 'D'; }
+
+                let mainType2 = 'A';
+                let max2 = scores2.A;
+                if (scores2.B > max2) { max2 = scores2.B; mainType2 = 'B'; }
+                if (scores2.C > max2) { max2 = scores2.C; mainType2 = 'C'; }
+                if (scores2.D > max2) { max2 = scores2.D; mainType2 = 'D'; }
+
+                const finalType = mainType1 + '_' + mainType2;
+
+                const typeInfo = {
+                    'A_A': { name: '枯萎的献祭者', sub: '无底线的透支', tags: '社交人格：极度讨好型人格<br>社交能耗：高敏感人群',
+                        behavior: '你的社交电池极小，一阵风就能吹灭你的能量；但你的讨好本能却逼着你向所有人供暖。你是一个一直在“失血”的重伤员，身体和精神常年处于崩溃边缘。',
+                        abyss: '你的潜意识底色是“极度的无价值感”。你认为真实的自己是一滩烂泥，只有通过燃烧自己、献祭自己，才能换取在这个世界上存活的“租金”。你的讨好，是一种悲壮的求生本能。',
+                        magnet: '<b>✦ 致命吸引：</b> 你是“暗黑三棱镜（NPD自恋者）”最完美的猎物。他们剥削你，而你甚至会为他们的冷酷找借口。<br><b>✦ 灵魂解药：</b> 拥有极强边界感、且不带评判的专业咨询师，或绝对温和的“避风港”型长者。',
+                        guide: '<b>✦ 强制休眠：</b> “物理断联”是你唯一的解药。把你从不属于你的荒野中拔出来，躲进绝对安全的洞穴。', action: '<b>“手机的葬礼”：</b> 每天设定一个固定的30分钟，将手机关机放进抽屉。在这个时间里，你不需要对任何人有用，只对自己的呼吸负责。' },
+                    
+                    'A_B': { name: '疲惫的伪装者', sub: '沉重的假面', tags: '社交人格：极度讨好型人格<br>社交能耗：中度敏感人群',
+                        behavior: '你穿着最华丽、最沉重的铠甲，去赴一场名为“成全他人”的死局。你不仅交出了底线，还在时刻监控气氛。微笑是你最痛苦的防御，深夜回家后面临着巨大的神经透支。',
+                        abyss: '在你长袖善舞的表象下，藏着一个极其恐惧“让别人失望”的孩童。你的自我价值建立在沙滩上，潜意识里你深信：“如果我不完美、不能照顾好所有人，我就没有被爱的资格。”',
+                        magnet: '<b>✦ 致命吸引：</b> 极易吸引“自恋型”或“情绪巨婴”。他们享受你的全方位照顾，并将你的退让视为理所当然。<br><b>✦ 灵魂解药：</b> 拥有“钝感力”和“安全型依恋”的人。他们不需要你猜心思，也会在你搞砸事情时告诉你没关系。',
+                        guide: '<b>✦ 允许冷场：</b> 下次聊天尴尬时，请咬住嘴唇不要去救场。世界不会因为三分钟的沉默而毁灭。<br><b>✦ 卸载雷达：</b> 别人的皱眉不是你的责任，实施课题分离，把别人的情绪还给别人。', action: '<b>“掉落的羽毛”：</b> 刻意去“搞砸”一件无关紧要的小事。比如：故意晚回一条信息；在点餐时明确拒绝别人的推荐。去亲自体验一次——哪怕你不那么讨喜，天也没有塌下来。' },
+
+                    'A_C': { name: '无痛的血包', sub: '习惯性妥协', tags: '社交人格：极度讨好型人格<br>社交能耗：健康型',
+                        behavior: '你习惯性地妥协和让步，但奇妙的是，你自身的能量恢复系统还算健康。这反而让你成为了那些“吸血鬼”最长情的宿主，因为你总能自己默默回血，然后继续被索取。',
+                        abyss: '你陷入了“习得性无助”。在你的认知里，反抗带来的冲突成本，远远大于妥协带来的憋屈。你潜意识认为“忍一忍就过去了”，你害怕的不是失去对方，而是害怕麻烦和对峙。',
+                        magnet: '<b>✦ 致命吸引：</b> 慢性索取者、习惯性推卸责任的同事/伴侣。像水蛭一样慢慢抽干你的精力。<br><b>✦ 灵魂解药：</b> 行事果断、界限分明的“战神”型朋友。他们能替你出头，并示范如何拒绝。',
+                        guide: '<b>✦ 觉察剥削：</b> 不要因为“我还扛得住”就任由别人越界。你的能量应该用来滋养自己，而不是喂养贪婪。', action: '<b>“24小时护城河”：</b> 面对任何人的任何请求，必须使用固定句式：“我得先看一下日程，晚点回复你。” 强行斩断你“条件反射式答应”的神经回路。' },
+
+                    'A_D': { name: '狂热的燃烧者', sub: '错位的殉道', tags: '社交人格：极度讨好型人格<br>社交能耗：社交充能型',
+                        behavior: '你有一种殉道者般的狂热。你极其讨好别人，并在这种“被所有人需要”中汲取巨大的快感。人群是你的充电站，你通过无底线地为群体付出，来换取核心地位。',
+                        abyss: '你的内心深处是一个空洞。你极度恐惧“微不足道”和“被遗忘”。你把“付出”当成了一种权力的控制手段——只要每个人都离不开我，我就永远安全，永远不朽。',
+                        magnet: '<b>✦ 致命吸引：</b> 依赖型人格、巨婴。他们围绕着你，让你感觉像个神明，但其实在无止境地消耗你的资源。<br><b>✦ 灵魂解药：</b> 完全独立、不依赖你、并且能在你停下来时依然爱你本身的人。',
+                        guide: '<b>✦ 直面虚无：</b> 问问自己，如果有一天你不再能为他们提供价值，你还剩下什么？', action: '<b>“消失的观众”：</b> 独自去完成一件极其美好但无人知晓的事情（比如去看一场日出，不发朋友圈）。体验一次“不被见证也依然存在”的美好。' },
+
+                    'B_A': { name: '作茧自缚的飞蛾', sub: '恐惧的囚徒', tags: '社交人格：中度讨好型人格<br>社交能耗：高敏感人群',
+                        behavior: '你的理智早已觉醒，知道不该讨好，但只要一想到拒绝别人，你的社交电量就瞬间清零。你被困在自己织就的恐慌之网中，一边流泪一边顺从。',
+                        abyss: '极度的“预期性焦虑”。在事情发生前，你的大脑就已经为你演练了一万种“拒绝后被报复、被孤立”的毁灭性结局。你被自己幻想出来的灾难吓得缴械投降。',
+                        magnet: '<b>✦ 致命吸引：</b> 情绪不稳定、擅长道德绑架的掌控者。只要稍微提高音量，就能让你放弃底线。<br><b>✦ 灵魂解药：</b> 情绪极其稳定、拥有钝感力的温和倾听者。',
+                        guide: '<b>✦ 接纳脆弱：</b> 承认现在的自己还没有力量对抗全世界，不苛责自己的退缩，慢慢积蓄力气。', action: '<b>“身体锚定法”：</b> 当你想顺从的恐惧袭来时，立刻将双脚死死踩在地上，深呼吸，感受大地的支撑力。告诉自己：“我在这里，我很安全，那些可怕的后果并未发生。”' },
+
+                    'B_B': { name: '超载的走钢丝者', sub: '极致的内耗', tags: '社交人格：中度讨好型人格<br>社交能耗：中度敏感人群',
+                        behavior: '你是名副其实的精神内耗之王。心里暗骂别人越界，脸上堆满笑容；脑海里还要反复演练哪句话说错了。大脑永远无法关机。',
+                        abyss: '你有着强烈的“完美好人综合征”。你贪婪地想要留住“真实的自我防御”，又想要得到“世俗的绝对赞美”。这种既要又要的冲突，让你的超我与本我日夜交战。',
+                        magnet: '<b>✦ 致命吸引：</b> “挑剔型”的朋友或上司。他们的一句皱眉，就能让你在脑海里写出十万字的检讨书。<br><b>✦ 灵魂解药：</b> 直来直去、毫无城府的“单线程”生物，让你不需要猜忌。',
+                        guide: '<b>✦ 切断反刍：</b> 当深夜开始复盘社交细节时，立刻起身做点物理消耗的事情，强行中断思维死循环。', action: '<b>“删除道歉信”：</b> 下一次当你觉得“可能”冒犯了别人，并下意识打出长篇大论的道歉解释时——全部删掉，只发一个简单的句号。承受那种不完美的刺痛感。' },
+
+                    'B_C': { name: '清醒的矛盾体', sub: '拖延的觉醒', tags: '社交人格：中度讨好型人格<br>社交能耗：健康型',
+                        behavior: '你是深夜里的哲学家，行动上的拖延症。你有足够的能量去划定界限，但总在等待一个“完美的时机”。你像坐在充满阳光的屋子里，却一直盯着阴影叹息的人。',
+                        abyss: '你在利用“理智化”作为防御机制。你把心理学当成了逃避现实行动的盾牌——只要我还在分析自己为什么讨好，我就可以暂时不用去面对拒绝别人的血雨腥风。',
+                        magnet: '<b>✦ 致命吸引：</b> 与你一样喜欢陷入哲思内耗的“清谈客”，互相理解，互不拯救。<br><b>✦ 灵魂解药：</b> 行动力爆表、甚至有些鲁莽的实干派，能一把将你拉入现实的泥淖。',
+                        guide: '<b>✦ 走出头脑：</b> 你的理论已经足够多了，现在的你需要的是一次真实的、带点血腥气的现实搏杀。', action: '<b>“五秒钟法则”：</b> 当你意识到某段关系让你不舒服，并在脑海中开始长篇大论的分析时，倒数五秒（5-4-3-2-1），立刻做出一个物理动作：比如直接退出那个群聊。' },
+
+                    'B_D': { name: '喧嚣中的孤独者', sub: '虚假的狂欢', tags: '社交人格：中度讨好型人格<br>社交能耗：社交充能型',
+                        behavior: '害怕独处，疯狂穿梭于各种聚会汲取能量；但在人群中你依然患得患失。曲终人散时，看着一地狼藉，你感到最致命的空虚。',
+                        abyss: '极度的“错失恐惧（FOMO）”与核心的“空心病”。你害怕停下来，因为一旦停止外界的喧嚣，你就会听到内心巨大的虚无感。你讨好大众，是为了掩盖你不知道自己真正喜欢什么的恐慌。',
+                        magnet: '<b>✦ 致命吸引：</b> 热衷于表面社交的酒肉朋友、派对动物。你们狂欢，但深夜绝不交心。<br><b>✦ 灵魂解药：</b> 能引导你向内探索的智者，或一段只需静静陪伴不需言语的深刻关系。',
+                        guide: '<b>✦ 提高门槛：</b> 既然离不开社交，那就筛选关系。去寻找能接纳你真实面貌的朋友，哪怕只有一个。', action: '<b>“空白的周末”：</b> 强行给自己安排一个没有任何社交局的周末。不刷社交软件，只是看云，去直面、熬过那阵最初的、仿佛戒断反应般的孤独恐慌。' },
+
+                    'C_A': { name: '隐世的守夜人', sub: '清冷的高敏', tags: '社交人格：健康人格<br>社交能耗：高敏感人群',
+                        behavior: '你活得通透且自我保护意识极强。你知道自己是“低电量”，所以毫不犹豫砍掉所有无效社交。拒绝别人时温柔且毫无愧疚。你是大雪封山时那座小木屋的主人。',
+                        abyss: '你并非冷漠，而是极度的“感觉统合过载”。潜意识里，你将外界的繁杂视为对精神世界的物理入侵。你通过严密的隔离，来守护内在极其脆弱且唯美的灵魂秩序。',
+                        magnet: '<b>✦ 致命吸引：</b> 过于热情、缺乏边界感的“破门而入者”，会让你瞬间升起最高级别的防御结界。<br><b>✦ 灵魂解药：</b> 同样享受孤独、懂得“平行玩耍”的灵魂伴侣。',
+                        guide: '<b>✦ 接纳低电量：</b> 你的高敏感赐予了你极高的艺术直觉，好好保护这份天赋，让它在独处中开花。', action: '<b>“微光的邀请”：</b> 挑选一个你绝对信任的人，邀请对方进入你的“领地”，分享一首你最爱的、却从未示人的诗歌或音乐。' },
+
+                    'C_B': { name: '克制的共情者', sub: '得体的分寸', tags: '社交人格：健康人格<br>社交能耗：中度敏感人群',
+                        behavior: '非常成熟的社会人。懂得在职场和社交中扮演得体，也设立了严格的“营业时间”。你能游刃有余地照顾他人，但时间一到，立刻抽身绝不恋战。',
+                        abyss: '你的潜意识是对“失控”的防备。你害怕混乱、害怕过度缠绵的情感拉扯。你用“得体”和“礼貌”作为防御机制，保持安全距离，确保没有任何人可以让你彻底失态。',
+                        magnet: '<b>✦ 致命吸引：</b> 情绪戏剧化、随时需要人拯救的“悲剧主角”。你的克制会激怒他们，他们会拼命想要撕破你的面具。<br><b>✦ 灵魂解药：</b> 成熟、理性、契约精神极强的伴侣/合伙人，在边界内给予最稳固的支撑。',
+                        guide: '<b>✦ 允许失控：</b> 偶尔流露一次不那么得体的真实情绪，会让你显得更加迷人且有血有肉。', action: '<b>“一场无序的狂奔”：</b> 去做一件毫无逻辑、不讲究分寸感的事。比如在暴雨中不打伞走一段路，或者在KTV里不管音准地嘶吼一首歌。让你的面具裂开一条透气的缝隙。' },
+
+                    'C_C': { name: '旷野的太阳', sub: '充盈的真实', tags: '社交人格：健康人格<br>社交能耗：健康型',
+                        behavior: '你找到了浪漫与现实的完美平衡。温柔且坚定。能在拥挤的社会关系中划出自留地，既能在独处中享受静谧，也能在关系中提供高质量陪伴。',
+                        abyss: '恭喜你，你的潜意识是一片肥沃且安全的土壤。你拥有“核心的自我接纳”与“存在性安全感”。你深知自己的光影两面，并不畏惧真实的暴露。',
+                        magnet: '<b>✦ 致命吸引：</b> 极度缺爱的吸血鬼们会像飞蛾扑火般涌向你，试图榨取你的温暖。<br><b>✦ 灵魂解药：</b> 同样人格健全的另一个太阳。双星系统，互相照耀，不互为阴影。',
+                        guide: '<b>✦ 警惕共情疲劳：</b> 因为你健康且充满能量，周围的人会不自觉向你索取。记得定期清空情绪垃圾桶。', action: '<b>“合规的自私”：</b> 你的健康意味着你有能力承担更多。今天，试着以“我就是不想”为理由，拒绝一件你明明有能力去做的事情。巩固你说“不”的权力。' },
+
+                    'C_D': { name: '充满魅力的领袖', sub: '温暖的引力', tags: '社交人格：健康人格<br>社交能耗：社交充能型',
+                        behavior: '天生的恒星，人群让你兴奋。你制定规则，用充沛的精力和健康的人格魅力吸引别人，而不是讨好别人。你既有力量，又有温度。',
+                        abyss: '你内在驱动力是对“影响力”与“生命力”的极致渴望。你希望在世界上留下深刻的印记，人群是你验证自我力量的镜子。只要这股力量不滑向控制欲，它就是伟大的。',
+                        magnet: '<b>✦ 致命吸引：</b> 缺乏主见、盲目崇拜的追随者。他们会将你神化，把人生的责任全部推给你。<br><b>✦ 灵魂解药：</b> 敢于对你说真话、能在你膨胀时及时泼冷水的诤友与平起平坐的对手。',
+                        guide: '<b>✦ 收敛光芒：</b> 你的光芒太盛，有时会灼伤身边敏感脆弱的人，学会在特定时刻调低亮度。', action: '<b>“交出方向盘”：</b> 在接下来的一次团队活动或朋友聚餐中，完全放弃决策权。做一个彻底的跟随者，任由别人带你去你不熟悉的地方，体验不掌控全盘的轻松。' },
+
+                    'D_A': { name: '绝缘的冰川', sub: '极端的封闭', tags: '社交人格：防御型人格<br>社交能耗：高敏感人群',
+                        behavior: '回避型依恋的极端。极度讨厌社交，排斥别人靠近。你把自己锁在冰冷的密室里，释放“生人勿近”的信号，以保护极其脆弱的神经。',
+                        abyss: '你内心深藏着一道巨大的“背叛与被弃”的原始创伤。潜意识告诉你：“所有美好的东西最终都会带来致命的伤害，只要我不曾拥有，我就永远不会失去。”你的冷漠，是冻结的眼泪。',
+                        magnet: '<b>✦ 致命吸引：</b> 具有强烈“拯救欲”的焦虑型依恋者。试图用体温融化你，最终被冻伤离去，验证了你的预言。<br><b>✦ 灵魂解药：</b> 像猫一样的伴侣。不过分热情，但在你偶尔敞开门缝时，愿意静静趴在你脚边。',
+                        guide: '<b>✦ 识别创伤：</b> 你的冰冷是对过去伤害的过度防御。试着去直面那个最初让你觉得“靠近就是危险”的瞬间。', action: '<b>“破冰的五秒钟”：</b> 去买单时，不要低头看手机。看着服务员的眼睛，停留哪怕三到五秒钟，说一句真诚的谢谢。让微弱的人类连接电流穿过身体。' },
+
+                    'D_B': { name: '焦虑的刺猬', sub: '试探的尖刺', tags: '社交人格：防御型人格<br>社交能耗：中度敏感人群',
+                        behavior: '看起来极其不好惹、毒舌甚至傲慢。但雷达一直开着，时刻监控别人的评价。你用推开别人的方式，来反复测试他们是否真的不会离开你。',
+                        abyss: '潜意识深处，你坚信“我本身是不值得被爱的”。所以你不断作天作地，竖起尖刺，你的底层逻辑是：“如果你连我这么糟糕、刻薄的样子都能包容，那你才是真正爱我。”',
+                        magnet: '<b>✦ 致命吸引：</b> 同样内心充满创伤、容易被你的刺激怒并与你互相伤害的“刺猬型”同类。<br><b>✦ 灵魂解药：</b> 情绪容量如同大海般的长者或伴侣。无论你怎么作，他们只会微笑着说“我知道你只是害怕”。',
+                        guide: '<b>✦ 放下测试：</b> 没有任何人能经受住无休止的推开。爱是吸引来的，不是用刺扎出来的。', action: '<b>“缴械的翻译”：</b> 当下一次你想说出一句恶毒的讽刺时，强行把话咽回去，翻译成你真实的脆弱：“我现在觉得很没安全感，你能抱抱我吗？”' },
+
+                    'D_C': { name: '优雅的独行侠', sub: '锋利的自给', tags: '社交人格：防御型人格<br>社交能耗：健康型',
+                        behavior: '高度自给自足，精力充沛。觉得人类的情感太麻烦、太不可控。不是害怕才推开世界，而是觉得这世界不配浪费你的时间。活得像一把冰冷的手术刀。',
+                        abyss: '你的潜意识信仰“绝对力量”与“慕强逻辑”。你极度鄙视软弱，不管是别人的还是自己的。你抹杀了自己生而为人对温情和柔软的渴求，将自己异化成了一台精密运转的机器。',
+                        magnet: '<b>✦ 致命吸引：</b> 慕强但能力低下的攀附者。他们仰望你，但很快会因为你的无情而心生怨恨。<br><b>✦ 灵魂解药：</b> 与你在精神和能力上绝对势均力敌的人。你们并肩作战，偶尔在战壕里共享一支烟。',
+                        guide: '<b>✦ 允许柔软：</b> 理性可以解决生存问题，但感性才能解决存在的意义。试着去体验一次毫无逻辑的浪漫。', action: '<b>“无能为力的求助”：</b> 找一件你自己明明可以轻易搞定的小事，故意停下来，去请求身边的人帮你完成，并接受他们的善意。' },
+
+                    'D_D': { name: '傲慢的暴君', sub: '权力的游戏', tags: '社交人格：防御型人格<br>社交能耗：社交充能型',
+                        behavior: '需要在人群中，但绝不允许别人平起平坐或窥探内心。通过掌控、甚至打压别人来获取社交能量。不需要互相取暖，只需要臣服。',
+                        abyss: '表面的狂妄掩盖着底层的“深渊般的自卑与不信任”。在你的潜意识里，世界是一个弱肉强食的黑暗森林。如果不去控制别人，就意味着随时会被别人踩在脚下。你的傲慢，是一种武装到牙齿的防御机制。',
+                        magnet: '<b>✦ 致命吸引：</b> 讨好型人格（A类底色）与斯德哥尔摩综合征患者。你们构成施虐与受虐的病态共生关系。<br><b>✦ 灵魂解药：</b> 一种能让你放下戒备的、无条件的爱（比如救助一只流浪动物），重新唤醒你内心被杀死的纯真。',
+                        guide: '<b>✦ 直面恐惧：</b> 你的暴虐源于对“显得软弱”的极度恐惧。真正的强者，是敢于展露肚皮的狮子。', action: '<b>“主动的溃败”：</b> 在下一次因为小事发生争执时，即便你知道你是对的，也请微笑着说：“嗯，你说得也有道理，听你的吧。” 体验一次“认输”带来的神奇松弛感。' }
+                };
+
+                return typeInfo[finalType];
+            }
+
+            function showReport() {
+                const info = buildReport();
+                const today = new Date();
+                const currentDateStr = `${today.getFullYear()} . ${String(today.getMonth() + 1).padStart(2, '0')} . ${String(today.getDate()).padStart(2, '0')}`;
+
+                reportContent.innerHTML = `
+                    <div class="stamp-decor">Soul<br>Print</div>
+                    <div class="report-header">
+                        <h1>致你的灵魂信札</h1>
+                        <h2 class="type-title">【 ${info.name} 】</h2>
+                        <p class="type-sub">—— ${info.sub} ——</p>
+                        <p class="type-tags">${info.tags}</p>
+                    </div>
+                    
+                    <div class="text-section">
+                        <h3 class="section-heading">行为特写（表象）</h3>
+                        <p class="analysis-p">${info.behavior}</p>
+                    </div>
+
+                    <div class="text-section">
+                        <h3 class="section-heading">潜意识暗流（深渊）</h3>
+                        <p class="analysis-p">${info.abyss}</p>
+                    </div>
+
+                    <div class="text-section">
+                        <h3 class="section-heading">关系磁场（羁绊）</h3>
+                        <p class="analysis-p" style="line-height:1.8">${info.magnet}</p>
+                    </div>
+                    
+                    <div class="prescription-box">
+                        <h3 class="section-heading" style="color:#B07D6B;">星辰指引（心法）</h3>
+                        <div class="prescription-content">${info.guide}</div>
+                        
+                        <h3 class="section-heading" style="color:#B07D6B; margin-top:25px;">破局仪式（行动）</h3>
+                        <div class="prescription-content">${info.action}</div>
+                    </div>
+                    
+                    <div class="footer-info">
+                        <span class="date-stamp">${currentDateStr}</span>
+                        <div class="action-buttons" data-html2canvas-ignore="true">
+                            <button class="btn btn-secondary" id="restartBtn">再次回溯</button>
+                            <button class="btn btn-primary" id="saveReportBtn">封存信笺</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('restartBtn').addEventListener('click', () => window.location.reload());
+                document.getElementById('saveReportBtn').addEventListener('click', () => {
+                    const target = document.getElementById('report-card');
+                    const oTrans = target.style.transform, oPos = target.style.position, oLeft = target.style.left, oTop = target.style.top, oMaxH = target.style.maxHeight, oOverY = target.style.overflowY;
+
+                    target.style.transform = 'none'; target.style.position = 'relative'; target.style.left = '0'; target.style.top = '0'; target.style.maxHeight = 'none'; target.style.overflowY = 'visible';
+
+                    html2canvas(target, { scale: 2, backgroundColor: '#FFFDFC' }).then(canvas => {
+                        target.style.transform = oTrans; target.style.position = oPos; target.style.left = oLeft; target.style.top = oTop; target.style.maxHeight = oMaxH; target.style.overflowY = oOverY; 
+                        const link = document.createElement('a');
+                        link.download = `灵魂画像_${currentDateStr.replace(/ /g,'')}.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    });
+                });
+            }
+
+            if (questions[0].part) showIntermission(questions[0].part);
+            else renderQuestion();
+        })();
+    </script>
+</body>
+</html>
